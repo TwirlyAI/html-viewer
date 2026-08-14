@@ -98,7 +98,7 @@
 
       .folio-grid {
         display: grid;
-        grid-template-columns: minmax(0, 1fr) 250px;
+        grid-template-columns: minmax(0, 1fr);
         gap: clamp(16px, 2.3vw, 28px);
         align-items: stretch;
       }
@@ -270,64 +270,6 @@
       .import-button:active { transform: translateY(3px) scale(0.98); box-shadow: 0 2px 0 var(--orange-dark), 0 5px 12px rgba(170, 72, 32, 0.17); }
       .import-button svg { width: 18px; height: 18px; }
 
-      .meta-rail {
-        display: flex;
-        flex-direction: column;
-        justify-content: space-between;
-        gap: 22px;
-        padding: 22px;
-        border: 1px solid var(--line);
-        border-radius: 0;
-        background: rgba(255, 253, 248, 0.45);
-        box-shadow: 8px 8px 0 rgba(23, 52, 74, 0.04);
-      }
-      .rail-heading {
-        margin: 0 0 13px;
-        color: var(--orange-dark);
-        font-size: 0.66rem;
-        font-weight: 800;
-        letter-spacing: 0.12em;
-        text-transform: uppercase;
-      }
-      .meta-rail::before {
-        display: block;
-        width: 18px;
-        height: 18px;
-        margin: -22px -22px 14px auto;
-        content: "";
-        border-bottom: 1px solid rgba(23, 52, 74, 0.17);
-        border-left: 1px solid rgba(23, 52, 74, 0.17);
-        background: var(--paper-deep);
-        clip-path: polygon(0 0, 100% 100%, 0 100%);
-      }
-      .file-name {
-        display: -webkit-box;
-        overflow: hidden;
-        margin: 0 0 10px;
-        color: var(--ink);
-        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-        font-size: 0.84rem;
-        font-weight: 700;
-        line-height: 1.35;
-        overflow-wrap: anywhere;
-        -webkit-box-orient: vertical;
-        -webkit-line-clamp: 3;
-      }
-      .file-meta, .security-note { margin: 0; color: var(--ink-soft); font-size: 0.8rem; line-height: 1.5; }
-      .status-row {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        margin: 18px 0 0;
-        color: var(--ink);
-        font-size: 0.79rem;
-        font-weight: 700;
-      }
-      .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #82919b; }
-      .status-dot.is-ready { background: #397159; box-shadow: 0 0 0 4px rgba(57, 113, 89, 0.12); }
-      .rail-rule { height: 1px; margin: 19px 0; background: var(--line); }
-      .security-note strong { color: var(--ink); font-weight: 760; }
-
       .control-strip {
         position: sticky;
         bottom: 0;
@@ -391,18 +333,12 @@
         .folio-grid { grid-template-columns: 1fr; }
         .viewer-shell { min-height: min(61vh, 680px); }
         #htmlFrame { height: min(61vh, 680px); min-height: 460px; }
-        .meta-rail { display: grid; grid-template-columns: 1.1fr 1fr; gap: 0 18px; padding: 17px 18px; }
-        .rail-heading { grid-column: 1 / -1; }
-        .rail-rule { display: none; }
-        .security-note { padding-left: 18px; border-left: 1px solid var(--line); }
       }
       @media (max-width: 510px) {
         .app-shell { padding-right: 14px; padding-left: 14px; }
         .masthead { margin-bottom: 16px; }
         .privacy-stamp span { display: none; }
         .viewer-shell { border-radius: 0; }
-        .meta-rail { grid-template-columns: 1fr; gap: 15px; }
-        .security-note { padding-top: 14px; padding-left: 0; border-top: 1px solid var(--line); border-left: 0; }
         .control-strip { position: relative; gap: 5px; padding: 8px; }
         .control-group { gap: 3px; }
         .control-group + .control-group { padding-left: 4px; }
@@ -449,19 +385,6 @@
             </div>
           </div>
         </div>
-
-        <aside class="meta-rail" aria-live="polite">
-          <div>
-            <p class="rail-heading">Document status</p>
-            <p class="file-name" id="fileName">No document selected</p>
-            <p class="file-meta" id="fileMeta">Choose a local HTML file to begin.</p>
-            <div class="status-row"><span class="status-dot" id="statusDot"></span><span id="statusText">Waiting for a file</span></div>
-          </div>
-          <div>
-            <div class="rail-rule"></div>
-            <p class="security-note"><strong>Browser boundary.</strong> This tool cannot disable iOS or browser security. Pages run with scripts and normal interactions, while remaining isolated from the viewer.</p>
-          </div>
-        </aside>
       </section>
 
       <nav class="control-strip" aria-label="Document actions">
@@ -501,24 +424,9 @@
         const viewerShell = document.getElementById('viewerShell');
         const emptySheet = document.getElementById('emptySheet');
         const fileInput = document.getElementById('fileInput');
-        const fileName = document.getElementById('fileName');
-        const fileMeta = document.getElementById('fileMeta');
-        const statusDot = document.getElementById('statusDot');
-        const statusText = document.getElementById('statusText');
         const controls = ['reloadButton', 'fullscreenButton', 'downloadButton'].map((id) => document.getElementById(id));
         let activeFile = null;
         let activeHTML = '';
-
-        function formatBytes(bytes) {
-          if (bytes < 1024) return `${bytes} B`;
-          if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-          return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-        }
-
-        function setStatus(message, ready = false) {
-          statusText.textContent = message;
-          statusDot.classList.toggle('is-ready', ready);
-        }
 
         function injectViewerBridge(source) {
           const bridge = '<script>window.addEventListener("message",function(e){if(e.data&&e.data.__fieldNotebookAction==="print"){try{window.print()}catch(_){}}});<\\/script>';
@@ -532,9 +440,7 @@
 
         function renderDocument() {
           if (!activeHTML) return;
-          setStatus('Loading document…');
           frame.srcdoc = injectViewerBridge(activeHTML);
-          frame.onload = () => setStatus('Running in isolated viewer', true);
         }
 
         function selectFile() {
@@ -545,23 +451,15 @@
         async function loadFile(file) {
           if (!file) return;
           const accepted = file.name.toLowerCase().endsWith('.html') || file.name.toLowerCase().endsWith('.htm') || file.type === 'text/html';
-          if (!accepted) {
-            setStatus('Choose an .html or .htm file');
-            return;
-          }
+          if (!accepted) return;
           try {
             activeFile = file;
             activeHTML = await file.text();
-            const titleMatch = activeHTML.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
-            const pageTitle = titleMatch ? titleMatch[1].replace(/<[^>]*>/g, '').trim() : '';
-            fileName.textContent = file.name;
-            fileMeta.textContent = `${formatBytes(file.size)}${pageTitle ? ` · ${pageTitle}` : ''}`;
             controls.forEach((button) => { button.disabled = false; });
             emptySheet.classList.add('is-hidden');
             viewerShell.classList.add('is-loaded');
             renderDocument();
           } catch (error) {
-            setStatus('Could not read that file');
             console.error(error);
           }
         }
